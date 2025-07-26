@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import messagebox
+import os
 
 # --- Setup main window ---
 root = Tk()
@@ -8,15 +9,28 @@ root.geometry("500x400")
 root.config(bg="black")
 
 tasks = []
-footer_visible = True  # To track whether footer is showing
+footer_visible = True
+
+# File name
+TASK_FILE = "tasks.txt"
 
 # --- Functions ---
+def load_tasks_from_file():
+    if os.path.exists(TASK_FILE):
+        with open(TASK_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                tasks.append(line.strip())
+
+def save_tasks_to_file():
+    with open(TASK_FILE, "w", encoding="utf-8") as f:
+        for task in tasks:
+            f.write(task + "\n")
+
 def update_tasks():
     listbox.delete(0, END)
     for task in tasks:
         listbox.insert(END, task)
 
-    # Only show footer if no tasks are present
     global footer_visible
     if not tasks:
         listbox.insert(END, "")
@@ -31,6 +45,7 @@ def add_task():
     if task:
         tasks.append(task)
         task_entry.delete(0, END)
+        save_tasks_to_file()
         update_tasks()
     else:
         messagebox.showwarning("Input Error", "Task cannot be empty!")
@@ -38,26 +53,42 @@ def add_task():
 def delete_task():
     selected = listbox.curselection()
     if selected:
-        tasks.pop(selected[0])
-        update_tasks()
+        index = selected[0]
+        task = listbox.get(index)
+        if task in tasks:
+            tasks.remove(task)
+            save_tasks_to_file()
+            update_tasks()
     else:
         messagebox.showwarning("Selection Error", "Please select a task to delete.")
 
 def delete_all_tasks():
     if messagebox.askyesno("Confirm Delete", "Delete all tasks?"):
         tasks.clear()
+        save_tasks_to_file()
         update_tasks()
 
+def mark_as_done():
+    selected = listbox.curselection()
+    if selected:
+        index = selected[0]
+        task = tasks[index]
+        if task.startswith("✅ "):
+            tasks[index] = task[2:]  # Remove the checkmark
+        else:
+            tasks[index] = "✅ " + task  # Add the checkmark
+        save_tasks_to_file()
+        update_tasks()
+    else:
+        messagebox.showwarning("Selection Error", "Please select a task to mark as done.")
+
 # --- UI Layout ---
-# Entry Label
 task_label = Label(root, text="Enter the Task:", font=("Arial", 12), fg="white", bg="black")
 task_label.pack(pady=5)
 
-# Task Entry
 task_entry = Entry(root, font=("Arial", 12), width=40)
 task_entry.pack(pady=5)
 
-# Buttons Frame
 button_frame = Frame(root, bg="black")
 button_frame.pack(pady=10)
 
@@ -69,18 +100,20 @@ add_btn.grid(row=0, column=0, padx=5)
 del_btn = Button(button_frame, text="Delete Task", command=delete_task, **btn_style)
 del_btn.grid(row=0, column=1, padx=5)
 
-del_all_btn = Button(button_frame, text="Delete All Tasks", command=delete_all_tasks, **btn_style)
-del_all_btn.grid(row=0, column=2, padx=5)
+mark_btn = Button(button_frame, text="✔️ Mark as Done", command=mark_as_done, **btn_style)
+mark_btn.grid(row=0, column=2, padx=5)
 
-# Listbox
+del_all_btn = Button(button_frame, text="Delete All Tasks", command=delete_all_tasks, **btn_style)
+del_all_btn.grid(row=1, column=1, pady=5)
+
 listbox = Listbox(root, font=("Arial", 12), width=60, height=10, selectbackground="gray")
 listbox.pack(pady=10)
 
-# Exit Button
 exit_btn = Button(root, text="Exit", command=root.quit, font=("Arial", 12, "bold"), bg="#DAA520", fg="black", width=50)
 exit_btn.pack(pady=5)
 
-# Show welcome footer at start
+# Load and show tasks
+load_tasks_from_file()
 update_tasks()
 
 root.mainloop()
